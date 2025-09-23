@@ -24,8 +24,12 @@ func Bootstrap(config *BootstrapConfig) {
 	userService := service.NewUserService(config.DB, userRepo, config.Log, config.Validate)
 	userHandler := handler.NewUserHandler(config.Log, userService)
 
+	projectMemberRepo := repository.NewProjectMemberRepository(config.DB, config.Log)
+	projectMemberService := service.NewProjectMemberService(config.DB, projectMemberRepo, config.Log, config.Validate)
+	projectMemberHandler := handler.NewProjectMemberHandler(config.Log, projectMemberService)
+
 	projectRepo := repository.NewProjectRepository(config.DB, config.Log)
-	projectService := service.NewProjectService(config.DB, projectRepo, config.Log, config.Validate)
+	projectService := service.NewProjectService(config.DB, projectRepo, config.Log, config.Validate, projectMemberRepo)
 	projectHandler := handler.NewProjectHandler(config.Log, projectService)
 
 	taskRepo := repository.NewTaskRepository(config.DB, config.Log)
@@ -33,12 +37,15 @@ func Bootstrap(config *BootstrapConfig) {
 	taskHandler := handler.NewTaskHandler(config.Log, taskService)
 
 	authMiddleware := middleware.NewAuth(userService)
+	projectMiddleware := middleware.NewProject(projectService)
 	routeConfig := RouteConfig{
-		App:            config.App,
-		AuthMiddleware: authMiddleware,
-		UserHandler:    userHandler,
-		ProjectHandler: projectHandler,
-		TaskHandler:    taskHandler,
+		App:                  config.App,
+		AuthMiddleware:       authMiddleware,
+		ProjectMiddleware:    projectMiddleware,
+		UserHandler:          userHandler,
+		ProjectHandler:       projectHandler,
+		TaskHandler:          taskHandler,
+		ProjectMemberHandler: projectMemberHandler,
 	}
 	routeConfig.Setup()
 }

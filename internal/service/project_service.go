@@ -17,18 +17,20 @@ import (
 )
 
 type ProjectService struct {
-	DB        *sqlx.DB
-	Repo      *repository.ProjectRepository
-	Log       *logrus.Logger
-	Validator *validator.Validate
+	DB                *sqlx.DB
+	Repo              *repository.ProjectRepository
+	Log               *logrus.Logger
+	Validator         *validator.Validate
+	RepoProjectMember *repository.ProjectMemberRepository
 }
 
-func NewProjectService(db *sqlx.DB, repo *repository.ProjectRepository, log *logrus.Logger, validator *validator.Validate) *ProjectService {
+func NewProjectService(db *sqlx.DB, repo *repository.ProjectRepository, log *logrus.Logger, validator *validator.Validate, repoProjectMember *repository.ProjectMemberRepository) *ProjectService {
 	return &ProjectService{
-		DB:        db,
-		Repo:      repo,
-		Log:       log,
-		Validator: validator,
+		DB:                db,
+		Repo:              repo,
+		Log:               log,
+		Validator:         validator,
+		RepoProjectMember: repoProjectMember,
 	}
 }
 
@@ -87,6 +89,18 @@ func (c *ProjectService) Create(ctx context.Context, req *model.ProjectCreateEdi
 
 	if err := c.Repo.Create(ctx, tx, payload); err != nil {
 		c.Log.Errorf("Failed create project %v", err)
+		return fiber.ErrInternalServerError
+	}
+
+	idProjectMember, _ := uuid.NewV7()
+	payloadProjectMember := &entity.ProjectMember{
+		ID:        idProjectMember,
+		ProjectID: newID,
+		UserID:    parsedUUID,
+		RoleID:    1, // owner
+	}
+	if err := c.RepoProjectMember.Create(ctx, tx, payloadProjectMember); err != nil {
+		c.Log.Errorf("Failed create project member %v", err)
 		return fiber.ErrInternalServerError
 	}
 

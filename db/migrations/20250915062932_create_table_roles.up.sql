@@ -1,5 +1,5 @@
 CREATE TABLE roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id SERIAL PRIMARY KEY,
   name VARCHAR(50) UNIQUE
 );
 

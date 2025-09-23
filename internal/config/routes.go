@@ -9,11 +9,13 @@ import (
 )
 
 type RouteConfig struct {
-	App            *fiber.App
-	AuthMiddleware fiber.Handler
-	UserHandler    *handler.UserHandler
-	ProjectHandler *handler.ProjectHandler
-	TaskHandler    *handler.TaskHandler
+	App                  *fiber.App
+	AuthMiddleware       fiber.Handler
+	ProjectMiddleware    fiber.Handler
+	UserHandler          *handler.UserHandler
+	ProjectHandler       *handler.ProjectHandler
+	TaskHandler          *handler.TaskHandler
+	ProjectMemberHandler *handler.ProjectMemberHandler
 }
 
 func (c *RouteConfig) Setup() {
@@ -40,12 +42,14 @@ func (c *RouteConfig) PrivateRoutes() {
 
 	projects := api.Group("/projects")
 	projects.Get("/", c.ProjectHandler.GetAll)
-	projects.Get(":id", c.ProjectHandler.GetByID)
+	projects.Get(":id", c.ProjectMiddleware, c.ProjectHandler.GetByID)
 	projects.Post("/", c.ProjectHandler.Create)
-	projects.Patch(":id", c.ProjectHandler.Update)
-	projects.Delete(":id", c.ProjectHandler.Delete)
+	projects.Patch(":id", c.ProjectMiddleware, c.ProjectHandler.Update)
+	projects.Delete(":id", c.ProjectMiddleware, c.ProjectHandler.Delete)
+	projects.Post(":id/invite", c.ProjectMiddleware, c.ProjectMemberHandler.InviteUser)
+	projects.Delete(":id/delete/:userId", c.ProjectMiddleware, c.ProjectMemberHandler.Delete)
 
-	tasks := api.Group("/tasks")
+	tasks := projects.Group("/tasks")
 	tasks.Get("/", c.TaskHandler.GetAll)
 	tasks.Get(":id", c.TaskHandler.GetByID)
 	tasks.Post("/", c.TaskHandler.Create)
