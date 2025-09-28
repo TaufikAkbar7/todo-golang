@@ -171,3 +171,45 @@ func (c *TaskHandler) Delete(ctx *fiber.Ctx) error {
 	}
 	return ctx.JSON(model.WebResponse[any]{Message: "Success deleted task"})
 }
+
+func (c *TaskHandler) AssignTag(ctx *fiber.Ctx) error {
+	newCtx, cancel := context.WithTimeout(ctx.UserContext(), 3*time.Second)
+	defer cancel()
+
+	request := new(model.TaskTagCreateEditRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.Errorf("Error validate request %v", err)
+		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+
+	if err := c.Validator.Struct(request); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+
+	id := ctx.Params("id")
+
+	if err := c.Service.AssignTag(newCtx, request, id); err != nil {
+		if err == context.DeadlineExceeded {
+			return ctx.Status(http.StatusGatewayTimeout).JSON(model.WebResponse[any]{Message: "operation timed out"})
+		}
+		fmt.Println(err)
+		return ctx.Status(http.StatusInternalServerError).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+	return ctx.JSON(model.WebResponse[any]{Message: "Success assign tag on task"})
+}
+
+func (c *TaskHandler) UnassignTag(ctx *fiber.Ctx) error {
+	newCtx, cancel := context.WithTimeout(ctx.UserContext(), 3*time.Second)
+	defer cancel()
+
+	id := ctx.Params("taskTagId")
+
+	if err := c.Service.UnassignTag(newCtx, id); err != nil {
+		if err == context.DeadlineExceeded {
+			return ctx.Status(http.StatusGatewayTimeout).JSON(model.WebResponse[any]{Message: "operation timed out"})
+		}
+		fmt.Println(err)
+		return ctx.Status(http.StatusInternalServerError).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+	return ctx.JSON(model.WebResponse[any]{Message: "Success unassign tag on task"})
+}

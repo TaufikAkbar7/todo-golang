@@ -16,6 +16,7 @@ type RouteConfig struct {
 	ProjectHandler       *handler.ProjectHandler
 	TaskHandler          *handler.TaskHandler
 	ProjectMemberHandler *handler.ProjectMemberHandler
+	TagHandler           *handler.TagHandler
 }
 
 func (c *RouteConfig) Setup() {
@@ -55,4 +56,14 @@ func (c *RouteConfig) PrivateRoutes() {
 	tasks.Post("/", c.TaskHandler.Create)
 	tasks.Patch(":id", c.TaskHandler.Update)
 	tasks.Delete(":id", c.TaskHandler.Delete)
+	tasks.Post(":id/assign-tag", c.TaskHandler.AssignTag)
+	tasks.Delete(":id/unassign-tag/:taskTagId", c.TaskHandler.UnassignTag)
+
+	tags := api.Group("/tags")
+	tags.Get("/", c.TagHandler.GetAll)
+	tags.Get(":id", c.TagHandler.GetByID)
+	tags.Post("/", c.TagHandler.Create)
+	tags.Patch(":id", c.TagHandler.Update)
+	tags.Delete(":id", c.TagHandler.Delete)
+
 }

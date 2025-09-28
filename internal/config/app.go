@@ -32,8 +32,12 @@ func Bootstrap(config *BootstrapConfig) {
 	projectService := service.NewProjectService(config.DB, projectRepo, config.Log, projectMemberRepo)
 	projectHandler := handler.NewProjectHandler(config.Log, projectService, config.Validate)
 
+	tagRepo := repository.NewTagRepository(config.DB, config.Log)
+	tagService := service.NewTagService(config.DB, tagRepo, config.Log)
+	tagHandler := handler.NewTagHandler(config.Log, tagService, config.Validate)
+
 	taskRepo := repository.NewTaskRepository(config.DB, config.Log)
-	taskService := service.NewTaskService(config.DB, taskRepo, config.Log)
+	taskService := service.NewTaskService(config.DB, taskRepo, config.Log, tagRepo)
 	taskHandler := handler.NewTaskHandler(config.Log, taskService, config.Validate)
 
 	authMiddleware := middleware.NewAuth(userService)
@@ -46,6 +50,7 @@ func Bootstrap(config *BootstrapConfig) {
 		ProjectHandler:       projectHandler,
 		TaskHandler:          taskHandler,
 		ProjectMemberHandler: projectMemberHandler,
+		TagHandler:           tagHandler,
 	}
 	routeConfig.Setup()
 }

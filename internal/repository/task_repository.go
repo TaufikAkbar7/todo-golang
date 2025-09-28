@@ -61,3 +61,28 @@ func (c *TaskRepository) Delete(ctx context.Context, tx *sqlx.Tx, id string) err
 	_, err := tx.ExecContext(ctx, query, id)
 	return err
 }
+
+func (c *TaskRepository) AssignTag(ctx context.Context, tx *sqlx.Tx, entity *entity.TaskTag) error {
+	query := "INSERT INTO task_tags (id, task_id, tag_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)"
+
+	_, err := tx.ExecContext(ctx, query, entity.ID, entity.TaskID, entity.TagID, entity.CreatedAt, entity.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *TaskRepository) UnassignTag(ctx context.Context, tx *sqlx.Tx, id string) error {
+	query := "DELETE FROM task_tags WHERE id = $1"
+
+	_, err := tx.ExecContext(ctx, query, id)
+	return err
+}
+
+func (c *TaskRepository) GetByIDTag(ctx context.Context, tx *sqlx.Tx, id string) (*entity.TaskTag, error) {
+	query := "SELECT * FROM task_tags WHERE id = $1"
+	task := new(entity.TaskTag)
+
+	err := tx.GetContext(ctx, task, query, id)
+	return task, err
+}

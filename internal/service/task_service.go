@@ -17,16 +17,18 @@ import (
 )
 
 type TaskService struct {
-	DB   *sqlx.DB
-	Repo *repository.TaskRepository
-	Log  *logrus.Logger
+	DB      *sqlx.DB
+	Repo    *repository.TaskRepository
+	Log     *logrus.Logger
+	RepoTag *repository.TagRepository
 }
 
-func NewTaskService(db *sqlx.DB, repo *repository.TaskRepository, log *logrus.Logger) *TaskService {
+func NewTaskService(db *sqlx.DB, repo *repository.TaskRepository, log *logrus.Logger, repoTag *repository.TagRepository) *TaskService {
 	return &TaskService{
-		DB:   db,
-		Repo: repo,
-		Log:  log,
+		DB:      db,
+		Repo:    repo,
+		Log:     log,
+		RepoTag: repoTag,
 	}
 }
 
@@ -114,7 +116,6 @@ func (c *TaskService) Update(ctx context.Context, req *model.TaskCreateEditReque
 		return fiber.ErrInternalServerError
 	}
 
-	c.Log.Debug(req.DueDate, "due_Date")
 	var dueDatePointer *time.Time
 
 	// check if the due date was provided in the request
@@ -168,7 +169,7 @@ func (c *TaskService) Delete(ctx context.Context, id string) error {
 	}
 
 	if err := c.Repo.Delete(ctx, tx, id); err != nil {
-		c.Log.Errorf("Failed to deleted user %v", err)
+		c.Log.Errorf("Failed to deleted task %v", err)
 		return err
 	}
 
@@ -178,5 +179,75 @@ func (c *TaskService) Delete(ctx context.Context, id string) error {
 	}
 
 	c.Log.Info("Success deleted task")
+	return nil
+}
+
+func (c *TaskService) AssignTag(ctx context.Context, req *model.TaskTagCreateEditRequest, id string) error {
+	newID, _ := uuid.NewV7()
+	tx, _ := c.DB.BeginTxx(ctx, nil)
+	defer tx.Rollback()
+
+	if _, err := c.Repo.GetByID(ctx, tx, id); err != nil {
+		if err == sql.ErrNoRows || err == errors.New("not Found") {
+			c.Log.Info("Data not found")
+			return fiber.ErrNotFound
+		}
+		c.Log.Errorf("Failed to get data task %v", err)
+		return fiber.ErrInternalServerError
+	}
+
+	if _, err := c.RepoTag.GetByID(ctx, tx, req.TagID); err != nil {
+		if err == sql.ErrNoRows || err == errors.New("not Found") {
+			c.Log.Info("Data not found")
+			return fiber.ErrNotFound
+		}
+		c.Log.Errorf("Failed to get data tag %v", err)
+		return fiber.ErrInternalServerError
+	}
+
+	dateNow := helper.GetDateNow()
+	tagID, _ := uuid.Parse(req.TagID)
+	taskID, _ := uuid.Parse(id)
+	payload := &entity.TaskTag{
+		ID:        newID,
+		TaskID:    taskID,
+		TagID:     tagID,
+		CreatedAt: dateNow,
+		UpdatedAt: dateNow,
+	}
+
+	if err := c.Repo.AssignTag(ctx, tx, payload); err != nil {
+		c.Log.Errorf("Failed to assign tag %v", err)
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Log.Errorf("Failed commit transaction : %v", err)
+		return fiber.ErrInternalServerError
+	}
+
+	return nil
+}
+
+func (c *TaskService) UnassignTag(ctx context.Context, id string) error {
+	tx, _ := c.DB.BeginTxx(ctx, nil)
+	defer tx.Rollback()
+
+	_, err := c.Repo.GetByIDTag(ctx, tx, id)
+	if err != nil {
+		c.Log.Errorf("Failed to search task tag by id %v", err)
+		return err
+	}
+
+	if err := c.Repo.UnassignTag(ctx, tx, id); err != nil {
+		c.Log.Errorf("Failed to unassign tag %v", err)
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Log.Errorf("Failed commit transaction : %v", err)
+		return fiber.ErrInternalServerError
+	}
+
 	return nil
 }
