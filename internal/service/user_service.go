@@ -10,7 +10,6 @@ import (
 	"golang-todo/internal/repository"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -20,18 +19,16 @@ import (
 )
 
 type UserService struct {
-	DB        *sqlx.DB
-	Repo      *repository.UserRepository
-	Log       *logrus.Logger
-	Validator *validator.Validate
+	DB   *sqlx.DB
+	Repo *repository.UserRepository
+	Log  *logrus.Logger
 }
 
-func NewUserService(db *sqlx.DB, repo *repository.UserRepository, log *logrus.Logger, validator *validator.Validate) *UserService {
+func NewUserService(db *sqlx.DB, repo *repository.UserRepository, log *logrus.Logger) *UserService {
 	return &UserService{
-		DB:        db,
-		Repo:      repo,
-		Log:       log,
-		Validator: validator,
+		DB:   db,
+		Repo: repo,
+		Log:  log,
 	}
 }
 
@@ -39,11 +36,6 @@ func (c *UserService) Create(ctx context.Context, req *model.UserCreateRequest) 
 	newID, _ := uuid.NewV7()
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
-
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Errorf("Invalid request body  : %+v", err)
-		return fiber.ErrBadRequest
-	}
 
 	// find user
 	user, err := c.Repo.FindByUsername(ctx, tx, req.Username)
@@ -93,11 +85,6 @@ func (c *UserService) Create(ctx context.Context, req *model.UserCreateRequest) 
 func (c *UserService) Login(ctx context.Context, req *model.LoginUserRequest) (*model.UserReponseLogin, error) {
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
-
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Errorf("Invalid request body  : %+v", err)
-		return nil, fiber.ErrBadRequest
-	}
 
 	user, err := c.Repo.FindByUsername(ctx, tx, req.Username)
 	if err != nil {

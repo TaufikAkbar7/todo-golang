@@ -8,9 +8,9 @@ CREATE TABLE project_members (
     CONSTRAINT fk_project_members_project_id
       FOREIGN KEY(project_id)
       REFERENCES projects(id)
-      ON DELETE RESTRICT,
+      ON DELETE CASCADE,
     CONSTRAINT fk_project_members_user_id
       FOREIGN KEY(user_id)
       REFERENCES users(id)
-      ON DELETE RESTRICT
+      ON DELETE CASCADE
 );

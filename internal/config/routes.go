@@ -49,7 +49,7 @@ func (c *RouteConfig) PrivateRoutes() {
 	projects.Post(":id/invite", c.ProjectMiddleware, c.ProjectMemberHandler.InviteUser)
 	projects.Delete(":id/delete/:userId", c.ProjectMiddleware, c.ProjectMemberHandler.Delete)
 
-	tasks := projects.Group("/tasks")
+	tasks := api.Group("/tasks")
 	tasks.Get("/", c.TaskHandler.GetAll)
 	tasks.Get(":id", c.TaskHandler.GetByID)
 	tasks.Post("/", c.TaskHandler.Create)

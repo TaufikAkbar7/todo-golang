@@ -9,7 +9,6 @@ import (
 	"golang-todo/internal/model"
 	"golang-todo/internal/repository"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -20,16 +19,14 @@ type ProjectService struct {
 	DB                *sqlx.DB
 	Repo              *repository.ProjectRepository
 	Log               *logrus.Logger
-	Validator         *validator.Validate
 	RepoProjectMember *repository.ProjectMemberRepository
 }
 
-func NewProjectService(db *sqlx.DB, repo *repository.ProjectRepository, log *logrus.Logger, validator *validator.Validate, repoProjectMember *repository.ProjectMemberRepository) *ProjectService {
+func NewProjectService(db *sqlx.DB, repo *repository.ProjectRepository, log *logrus.Logger, repoProjectMember *repository.ProjectMemberRepository) *ProjectService {
 	return &ProjectService{
 		DB:                db,
 		Repo:              repo,
 		Log:               log,
-		Validator:         validator,
 		RepoProjectMember: repoProjectMember,
 	}
 }
@@ -63,17 +60,12 @@ func (c *ProjectService) GetByID(ctx context.Context, id string) (*entity.Projec
 	return project, nil
 }
 
-func (c *ProjectService) Create(ctx context.Context, req *model.ProjectCreateEditRequest) error {
+func (c *ProjectService) Create(ctx context.Context, req *model.ProjectCreateEditRequest, ownerID string) error {
 	newID, _ := uuid.NewV7()
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
 
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Errorf("Invalid request body  : %+v", err)
-		return fiber.ErrBadRequest
-	}
-
-	parsedUUID, err := uuid.Parse(req.OwnerID)
+	parsedUUID, err := uuid.Parse(ownerID)
 	if err != nil {
 		c.Log.Errorf("Failed to parse UUID string: %v", err)
 	}
@@ -116,11 +108,6 @@ func (c *ProjectService) Create(ctx context.Context, req *model.ProjectCreateEdi
 func (c *ProjectService) Update(ctx context.Context, req *model.ProjectCreateEditRequest, id string) error {
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
-
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Errorf("Invalid request body  : %+v", err)
-		return fiber.ErrBadRequest
-	}
 
 	project, err := c.Repo.GetByID(ctx, tx, id)
 	if err != nil {

@@ -8,8 +8,8 @@ import (
 	"golang-todo/internal/helper"
 	"golang-todo/internal/model"
 	"golang-todo/internal/repository"
+	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -17,18 +17,16 @@ import (
 )
 
 type TaskService struct {
-	DB        *sqlx.DB
-	Repo      *repository.TaskRepository
-	Log       *logrus.Logger
-	Validator *validator.Validate
+	DB   *sqlx.DB
+	Repo *repository.TaskRepository
+	Log  *logrus.Logger
 }
 
-func NewTaskService(db *sqlx.DB, repo *repository.TaskRepository, log *logrus.Logger, validator *validator.Validate) *TaskService {
+func NewTaskService(db *sqlx.DB, repo *repository.TaskRepository, log *logrus.Logger) *TaskService {
 	return &TaskService{
-		DB:        db,
-		Repo:      repo,
-		Log:       log,
-		Validator: validator,
+		DB:   db,
+		Repo: repo,
+		Log:  log,
 	}
 }
 
@@ -66,9 +64,14 @@ func (c *TaskService) Create(ctx context.Context, req *model.TaskCreateEditReque
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
 
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Errorf("Invalid request body  : %+v", err)
-		return fiber.ErrBadRequest
+	var dueDatePointer *time.Time
+	// check if the due date was provided in the request
+	if req.DueDate != nil && *req.DueDate != "" {
+		parsedTime, err := time.Parse(time.RFC3339, *req.DueDate)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid due_date format, please use RFC3339")
+		}
+		dueDatePointer = &parsedTime
 	}
 
 	dateNow := helper.GetDateNow()
@@ -78,6 +81,9 @@ func (c *TaskService) Create(ctx context.Context, req *model.TaskCreateEditReque
 		ProjectID: req.ProjectID,
 		CreatedAt: dateNow,
 		UpdatedAt: dateNow,
+		DueDate:   dueDatePointer,
+		Status:    req.Status,
+		Priority:  req.Priority,
 	}
 
 	if err := c.Repo.Create(ctx, tx, payload); err != nil {
@@ -98,11 +104,6 @@ func (c *TaskService) Update(ctx context.Context, req *model.TaskCreateEditReque
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
 
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Errorf("Invalid request body  : %+v", err)
-		return fiber.ErrBadRequest
-	}
-
 	task, err := c.Repo.GetByID(ctx, tx, id)
 	if err != nil {
 		if err == sql.ErrNoRows || err == errors.New("not Found") {
@@ -113,14 +114,28 @@ func (c *TaskService) Update(ctx context.Context, req *model.TaskCreateEditReque
 		return fiber.ErrInternalServerError
 	}
 
+	c.Log.Debug(req.DueDate, "due_Date")
+	var dueDatePointer *time.Time
+
+	// check if the due date was provided in the request
+	if req.DueDate != nil && *req.DueDate != "" {
+		parsedTime, err := time.Parse(time.RFC3339, *req.DueDate)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid due_date format, please use RFC3339")
+		}
+		dueDatePointer = &parsedTime
+	}
+
 	dateNow := helper.GetDateNow()
 	payload := &entity.Task{
 		ID:        task.ID,
 		Title:     req.Title,
 		ProjectID: req.ProjectID,
 		UpdatedAt: dateNow,
+		DueDate:   dueDatePointer,
+		Status:    req.Status,
+		Priority:  req.Priority,
 	}
-	c.Log.Debug(payload)
 
 	if err := c.Repo.Update(ctx, tx, payload); err != nil {
 		c.Log.Errorf("Failed create task %v", err)

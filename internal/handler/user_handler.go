@@ -7,19 +7,22 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
 type UserHandler struct {
-	Log     *logrus.Logger
-	Service *service.UserService
+	Log       *logrus.Logger
+	Service   *service.UserService
+	Validator *validator.Validate
 }
 
-func NewUserHandler(logger *logrus.Logger, service *service.UserService) *UserHandler {
+func NewUserHandler(logger *logrus.Logger, service *service.UserService, validator *validator.Validate) *UserHandler {
 	return &UserHandler{
-		Log:     logger,
-		Service: service,
+		Log:       logger,
+		Service:   service,
+		Validator: validator,
 	}
 }
 
@@ -30,6 +33,10 @@ func (c *UserHandler) Register(ctx *fiber.Ctx) error {
 	request := new(model.UserCreateRequest)
 	if err := ctx.BodyParser(request); err != nil {
 		c.Log.Errorf("Error validate request %v", err)
+		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+	if err := c.Validator.Struct(request); err != nil {
+		c.Log.Errorf("Invalid request body  : %+v", err)
 		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
 	}
 
@@ -55,6 +62,10 @@ func (c *UserHandler) Login(ctx *fiber.Ctx) error {
 	err := ctx.BodyParser(request)
 	if err != nil {
 		c.Log.Errorf("Failed to parse request body : %+v", err)
+		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+	if err := c.Validator.Struct(request); err != nil {
+		c.Log.Errorf("Invalid request body  : %+v", err)
 		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
 	}
 

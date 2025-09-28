@@ -38,8 +38,8 @@ func (c *TaskRepository) GetByID(ctx context.Context, tx *sqlx.Tx, id string) (*
 }
 
 func (c *TaskRepository) Create(ctx context.Context, tx *sqlx.Tx, task *entity.Task) error {
-	query := "INSERT INTO tasks (id, project_id, title, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)"
-	_, err := tx.ExecContext(ctx, query, task.ID, task.ProjectID, task.Title, task.CreatedAt, task.UpdatedAt)
+	query := "INSERT INTO tasks (id, project_id, title, created_at, updated_at, due_date, status, priority) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+	_, err := tx.ExecContext(ctx, query, task.ID, task.ProjectID, task.Title, task.CreatedAt, task.UpdatedAt, task.DueDate, task.Status, task.Priority)
 	if err != nil {
 		return err
 	}
@@ -47,8 +47,8 @@ func (c *TaskRepository) Create(ctx context.Context, tx *sqlx.Tx, task *entity.T
 }
 
 func (c *TaskRepository) Update(ctx context.Context, tx *sqlx.Tx, entity *entity.Task) error {
-	query := "UPDATE tasks SET title = $1, project_id = $2, updated_at = $3 WHERE id = $4"
-	_, err := tx.ExecContext(ctx, query, entity.Title, entity.ProjectID, entity.UpdatedAt, entity.ID)
+	query := "UPDATE tasks SET title = $1, project_id = $2, updated_at = $3, due_date = $5, status = $6, priority = $7 WHERE id = $4"
+	_, err := tx.ExecContext(ctx, query, entity.Title, entity.ProjectID, entity.UpdatedAt, entity.ID, entity.DueDate, entity.Status, entity.Priority)
 	if err != nil {
 		return err
 	}

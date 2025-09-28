@@ -21,20 +21,20 @@ type BootstrapConfig struct {
 
 func Bootstrap(config *BootstrapConfig) {
 	userRepo := repository.NewUserRepository(config.DB, config.Log)
-	userService := service.NewUserService(config.DB, userRepo, config.Log, config.Validate)
-	userHandler := handler.NewUserHandler(config.Log, userService)
+	userService := service.NewUserService(config.DB, userRepo, config.Log)
+	userHandler := handler.NewUserHandler(config.Log, userService, config.Validate)
 
 	projectMemberRepo := repository.NewProjectMemberRepository(config.DB, config.Log)
-	projectMemberService := service.NewProjectMemberService(config.DB, projectMemberRepo, config.Log, config.Validate)
-	projectMemberHandler := handler.NewProjectMemberHandler(config.Log, projectMemberService)
+	projectMemberService := service.NewProjectMemberService(config.DB, projectMemberRepo, config.Log)
+	projectMemberHandler := handler.NewProjectMemberHandler(config.Log, projectMemberService, config.Validate)
 
 	projectRepo := repository.NewProjectRepository(config.DB, config.Log)
-	projectService := service.NewProjectService(config.DB, projectRepo, config.Log, config.Validate, projectMemberRepo)
-	projectHandler := handler.NewProjectHandler(config.Log, projectService)
+	projectService := service.NewProjectService(config.DB, projectRepo, config.Log, projectMemberRepo)
+	projectHandler := handler.NewProjectHandler(config.Log, projectService, config.Validate)
 
 	taskRepo := repository.NewTaskRepository(config.DB, config.Log)
-	taskService := service.NewTaskService(config.DB, taskRepo, config.Log, config.Validate)
-	taskHandler := handler.NewTaskHandler(config.Log, taskService)
+	taskService := service.NewTaskService(config.DB, taskRepo, config.Log)
+	taskHandler := handler.NewTaskHandler(config.Log, taskService, config.Validate)
 
 	authMiddleware := middleware.NewAuth(userService)
 	projectMiddleware := middleware.NewProject(projectService)

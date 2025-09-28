@@ -9,7 +9,6 @@ import (
 	"golang-todo/internal/model"
 	"golang-todo/internal/repository"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -17,18 +16,16 @@ import (
 )
 
 type ProjectMemberService struct {
-	DB        *sqlx.DB
-	Repo      *repository.ProjectMemberRepository
-	Log       *logrus.Logger
-	Validator *validator.Validate
+	DB   *sqlx.DB
+	Repo *repository.ProjectMemberRepository
+	Log  *logrus.Logger
 }
 
-func NewProjectMemberService(db *sqlx.DB, repo *repository.ProjectMemberRepository, log *logrus.Logger, validator *validator.Validate) *ProjectMemberService {
+func NewProjectMemberService(db *sqlx.DB, repo *repository.ProjectMemberRepository, log *logrus.Logger) *ProjectMemberService {
 	return &ProjectMemberService{
-		DB:        db,
-		Repo:      repo,
-		Log:       log,
-		Validator: validator,
+		DB:   db,
+		Repo: repo,
+		Log:  log,
 	}
 }
 
@@ -37,13 +34,8 @@ func (c *ProjectMemberService) Create(ctx context.Context, req *model.ProjectMem
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
 
-	if err := c.Validator.Struct(req); err != nil {
-		c.Log.Errorf("Invalid request body  : %+v", err)
-		return fiber.ErrBadRequest
-	}
-
 	// check if member exist in project
-	hasMember, err := c.Repo.FindProjectMember(ctx, tx, req.ProjectID, req.UserID)
+	hasMember, err := c.Repo.FindProjectMember(ctx, tx, req.ProjectID, *req.UserID)
 	if err != nil {
 		c.Log.Errorf("Failed find member in project %v", err)
 		return fiber.ErrInternalServerError
@@ -58,7 +50,7 @@ func (c *ProjectMemberService) Create(ctx context.Context, req *model.ProjectMem
 	payload := &entity.ProjectMember{
 		ID:        newID,
 		ProjectID: req.ProjectID,
-		UserID:    req.UserID,
+		UserID:    *req.UserID,
 		RoleID:    req.RoleID,
 		CreatedAt: dateNow,
 		UpdatedAt: dateNow,

@@ -7,20 +7,23 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
 type ProjectMemberHandler struct {
-	Log     *logrus.Logger
-	Service *service.ProjectMemberService
+	Log       *logrus.Logger
+	Service   *service.ProjectMemberService
+	Validator *validator.Validate
 }
 
-func NewProjectMemberHandler(logger *logrus.Logger, service *service.ProjectMemberService) *ProjectMemberHandler {
+func NewProjectMemberHandler(logger *logrus.Logger, service *service.ProjectMemberService, validator *validator.Validate) *ProjectMemberHandler {
 	return &ProjectMemberHandler{
-		Log:     logger,
-		Service: service,
+		Log:       logger,
+		Service:   service,
+		Validator: validator,
 	}
 }
 
@@ -32,6 +35,10 @@ func (c *ProjectMemberHandler) InviteUser(ctx *fiber.Ctx) error {
 	if err := ctx.BodyParser(request); err != nil {
 		c.Log.Errorf("Error validate request %v", err)
 		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+	if err := c.Validator.Struct(request); err != nil {
+		c.Log.Errorf("Invalid request body  : %+v", err)
+		return fiber.ErrBadRequest
 	}
 
 	id := ctx.Params("id")

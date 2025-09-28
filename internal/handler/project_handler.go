@@ -8,19 +8,22 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
 type ProjectHandler struct {
-	Log     *logrus.Logger
-	Service *service.ProjectService
+	Log       *logrus.Logger
+	Service   *service.ProjectService
+	Validator *validator.Validate
 }
 
-func NewProjectHandler(logger *logrus.Logger, service *service.ProjectService) *ProjectHandler {
+func NewProjectHandler(logger *logrus.Logger, service *service.ProjectService, validator *validator.Validate) *ProjectHandler {
 	return &ProjectHandler{
-		Log:     logger,
-		Service: service,
+		Log:       logger,
+		Service:   service,
+		Validator: validator,
 	}
 }
 
@@ -73,10 +76,14 @@ func (c *ProjectHandler) Create(ctx *fiber.Ctx) error {
 		c.Log.Errorf("Error validate request %v", err)
 		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
 	}
+	if err := c.Validator.Struct(request); err != nil {
+		c.Log.Errorf("Invalid request body  : %+v", err)
+		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
 	// get id user login
-	request.OwnerID = middleware.GetUser(ctx).ID
+	id := middleware.GetUser(ctx).ID
 
-	if err := c.Service.Create(newCtx, request); err != nil {
+	if err := c.Service.Create(newCtx, request, id); err != nil {
 		if err == context.DeadlineExceeded {
 			return ctx.Status(http.StatusGatewayTimeout).JSON(model.WebResponse[any]{Message: "operation timed out"})
 		}
@@ -93,6 +100,10 @@ func (c *ProjectHandler) Update(ctx *fiber.Ctx) error {
 	request := new(model.ProjectCreateEditRequest)
 	if err := ctx.BodyParser(request); err != nil {
 		c.Log.Errorf("Error validate request %v", err)
+		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+	if err := c.Validator.Struct(request); err != nil {
+		c.Log.Errorf("Invalid request body  : %+v", err)
 		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
 	}
 

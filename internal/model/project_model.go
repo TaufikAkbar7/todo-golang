@@ -7,12 +7,11 @@ import (
 )
 
 type ProjectCreateEditRequest struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"project_name" form:"project_name" validate:"required,max=100"`
-	Description string    `json:"description" form:"description" validate:"required,max=100"`
-	OwnerID     string    `json:"owner_id,omitempty" form:"owner_id"`
-	CreatedAt   time.Time `json:"created_at,omitempty"`
-	UpdatedAt   time.Time `json:"updated_at,omitempty"`
+	ID          string     `json:"id"`
+	Name        string     `json:"project_name" form:"project_name" validate:"required,max=100"`
+	Description string     `json:"description" form:"description" validate:"required,max=100"`
+	CreatedAt   *time.Time `json:"created_at,omitempty"`
+	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
 }
 
 type ProjectReponseGet struct {

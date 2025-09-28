@@ -2,24 +2,28 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"golang-todo/internal/model"
 	"golang-todo/internal/service"
 	"net/http"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
 type TaskHandler struct {
-	Log     *logrus.Logger
-	Service *service.TaskService
+	Log       *logrus.Logger
+	Service   *service.TaskService
+	Validator *validator.Validate
 }
 
-func NewTaskHandler(logger *logrus.Logger, service *service.TaskService) *TaskHandler {
+func NewTaskHandler(logger *logrus.Logger, service *service.TaskService, validator *validator.Validate) *TaskHandler {
 	return &TaskHandler{
-		Log:     logger,
-		Service: service,
+		Log:       logger,
+		Service:   service,
+		Validator: validator,
 	}
 }
 
@@ -86,10 +90,27 @@ func (c *TaskHandler) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
 	}
 
+	if err := c.Validator.Struct(request); err != nil {
+		validationErrors, _ := err.(validator.ValidationErrors)
+		var errorMessage string
+		for _, fieldErr := range validationErrors {
+			switch fieldErr.Tag() {
+			case "required":
+				errorMessage = fmt.Sprintf("%s is a required field", fieldErr.Field())
+			case "oneof":
+				errorMessage = fmt.Sprintf("%s must be one of [%s]", fieldErr.Field(), fieldErr.Param())
+			default:
+				errorMessage = fmt.Sprintf("validation failed on the '%s' tag", fieldErr.Tag())
+			}
+		}
+		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: errorMessage})
+	}
+
 	if err := c.Service.Create(newCtx, request); err != nil {
 		if err == context.DeadlineExceeded {
 			return ctx.Status(http.StatusGatewayTimeout).JSON(model.WebResponse[any]{Message: "operation timed out"})
 		}
+		fmt.Println(err)
 		return ctx.Status(http.StatusInternalServerError).JSON(model.WebResponse[any]{Message: err.Error()})
 	}
 	return ctx.JSON(model.WebResponse[any]{Message: "Success created task"})
@@ -104,6 +125,21 @@ func (c *TaskHandler) Update(ctx *fiber.Ctx) error {
 	if err := ctx.BodyParser(request); err != nil {
 		c.Log.Errorf("Error validate request %v", err)
 		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
+	}
+	if err := c.Validator.Struct(request); err != nil {
+		validationErrors, _ := err.(validator.ValidationErrors)
+		var errorMessage string
+		for _, fieldErr := range validationErrors {
+			switch fieldErr.Tag() {
+			case "required":
+				errorMessage = fmt.Sprintf("%s is a required field", fieldErr.Field())
+			case "oneof":
+				errorMessage = fmt.Sprintf("%s must be one of [%s]", fieldErr.Field(), fieldErr.Param())
+			default:
+				errorMessage = fmt.Sprintf("validation failed on the '%s' tag", fieldErr.Tag())
+			}
+		}
+		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: errorMessage})
 	}
 
 	if err := c.Service.Update(newCtx, request, id); err != nil {
