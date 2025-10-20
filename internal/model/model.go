@@ -1,5 +1,7 @@
 package model
 
+import "github.com/google/uuid"
+
 type WebResponse[T any] struct {
 	Data    T             `json:"data"`
 	Paging  *PageMetadata `json:"paging,omitempty"`
@@ -19,6 +21,6 @@ type PageMetadata struct {
 }
 
 type Auth struct {
-	ID       string
+	ID       uuid.UUID
 	Username string
 }

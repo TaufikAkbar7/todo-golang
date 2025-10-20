@@ -42,15 +42,20 @@ func Bootstrap(config *BootstrapConfig) {
 
 	authMiddleware := middleware.NewAuth(userService)
 	projectMiddleware := middleware.NewProject(projectService)
+	taskMiddleware := middleware.NewTask(projectMemberService)
+	projectMemberMiddleware := middleware.NewProjectMember(projectMemberService)
+
 	routeConfig := RouteConfig{
-		App:                  config.App,
-		AuthMiddleware:       authMiddleware,
-		ProjectMiddleware:    projectMiddleware,
-		UserHandler:          userHandler,
-		ProjectHandler:       projectHandler,
-		TaskHandler:          taskHandler,
-		ProjectMemberHandler: projectMemberHandler,
-		TagHandler:           tagHandler,
+		App:                     config.App,
+		AuthMiddleware:          authMiddleware,
+		ProjectMiddleware:       projectMiddleware,
+		TaskMiddleware:          taskMiddleware,
+		ProjectMemberMiddleware: projectMemberMiddleware,
+		UserHandler:             userHandler,
+		ProjectHandler:          projectHandler,
+		TaskHandler:             taskHandler,
+		ProjectMemberHandler:    projectMemberHandler,
+		TagHandler:              tagHandler,
 	}
 	routeConfig.Setup()
 }

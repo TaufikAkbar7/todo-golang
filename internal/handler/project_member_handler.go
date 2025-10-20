@@ -60,8 +60,10 @@ func (c *ProjectMemberHandler) Delete(ctx *fiber.Ctx) error {
 
 	id := ctx.Params("id")
 	userId := ctx.Params("userId")
+	newID, _ := uuid.Parse(id)
+	newUserID, _ := uuid.Parse(userId)
 
-	if err := c.Service.Delete(newCtx, id, userId); err != nil {
+	if err := c.Service.Delete(newCtx, newID, newUserID); err != nil {
 		if err == context.DeadlineExceeded {
 			return ctx.Status(http.StatusGatewayTimeout).JSON(model.WebResponse[any]{Message: "operation timed out"})
 		}

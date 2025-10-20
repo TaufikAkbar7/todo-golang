@@ -2,7 +2,10 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"golang-todo/internal/entity"
+	"golang-todo/internal/model"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -31,7 +34,7 @@ func (c *ProjectMemberRepository) Create(ctx context.Context, tx *sqlx.Tx, proje
 	return nil
 }
 
-func (c *ProjectMemberRepository) Delete(ctx context.Context, tx *sqlx.Tx, id string, userID string) error {
+func (c *ProjectMemberRepository) Delete(ctx context.Context, tx *sqlx.Tx, id uuid.UUID, userID uuid.UUID) error {
 	query := "DELETE FROM project_members WHERE project_id = $1 AND user_id = $2"
 
 	_, err := tx.ExecContext(ctx, query, id, userID)
@@ -52,10 +55,28 @@ func (c *ProjectMemberRepository) FindProjectMember(ctx context.Context, tx *sql
 	return hasMember, err
 }
 
-func (c *ProjectMemberRepository) GetByID(ctx context.Context, tx *sqlx.Tx, id string) (*entity.ProjectMember, error) {
-	query := "SELECT * FROM project_members WHERE user_id = $1"
+func (c *ProjectMemberRepository) GetByID(ctx context.Context, tx *sqlx.Tx, filter model.ProjectMemberFilter) (*entity.ProjectMember, error) {
+	query := "SELECT * FROM project_members"
+	var conditions []string
+	var args []any
+
+	// dynamically build the query based on the filter
+	if filter.UserID != nil {
+		conditions = append(conditions, fmt.Sprintf("user_id = $%d", len(args)+1))
+		args = append(args, *filter.UserID)
+	}
+
+	if filter.ProjectID != nil {
+		conditions = append(conditions, fmt.Sprintf("project_id = $%d", len(args)+1))
+		args = append(args, *filter.ProjectID)
+	}
+
+	// if any conditions were added, append them to the query
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
 	project := new(entity.ProjectMember)
 
-	err := tx.GetContext(ctx, project, query, id)
+	err := tx.GetContext(ctx, project, query, args...)
 	return project, err
 }

@@ -5,6 +5,7 @@ import (
 	"golang-todo/internal/entity"
 	"golang-todo/internal/model"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 )
@@ -21,20 +22,20 @@ func NewProjectRepository(db *sqlx.DB, log *logrus.Logger) *ProjectRepository {
 	}
 }
 
-func (c *ProjectRepository) GetAll(ctx context.Context) (*[]model.ProjectReponseGet, error) {
-	query := "SELECT id, name, description, owner_id, created_at FROM projects"
+func (c *ProjectRepository) GetAll(ctx context.Context, id uuid.UUID) (*[]model.ProjectReponseGet, error) {
+	query := "SELECT p.id, p.name, p.description, p.owner_id, p.created_at FROM project_members pm JOIN projects p on pm.project_id = p.id WHERE pm.user_id = $1"
 	projects := new([]model.ProjectReponseGet)
 
-	err := c.DB.SelectContext(ctx, projects, query)
+	err := c.DB.SelectContext(ctx, projects, query, id)
 
 	return projects, err
 }
 
-func (c *ProjectRepository) GetByID(ctx context.Context, tx *sqlx.Tx, id string) (*entity.Project, error) {
-	query := "SELECT id, name, description, owner_id, created_at FROM projects WHERE id = $1"
+func (c *ProjectRepository) GetByID(ctx context.Context, tx *sqlx.Tx, id uuid.UUID, userID uuid.UUID) (*entity.Project, error) {
+	query := "SELECT p.id, p.name, p.description, p.owner_id, p.created_at FROM project_members pm JOIN projects p on pm.project_id = p.id WHERE p.id = $1 AND pm.user_id = $2"
 	project := new(entity.Project)
 
-	err := tx.GetContext(ctx, project, query, id)
+	err := tx.GetContext(ctx, project, query, id, userID)
 	return project, err
 }
 
@@ -58,14 +59,14 @@ func (c *ProjectRepository) Update(ctx context.Context, tx *sqlx.Tx, entity *ent
 	return nil
 }
 
-func (c *ProjectRepository) Delete(ctx context.Context, tx *sqlx.Tx, id string) error {
+func (c *ProjectRepository) Delete(ctx context.Context, tx *sqlx.Tx, id uuid.UUID) error {
 	query := "DELETE FROM projects WHERE id = $1"
 
 	_, err := tx.ExecContext(ctx, query, id)
 	return err
 }
 
-func (c *ProjectRepository) CountTaskByProjectID(ctx context.Context, tx *sqlx.Tx, id string) (*int, error) {
+func (c *ProjectRepository) CountTaskByProjectID(ctx context.Context, tx *sqlx.Tx, id uuid.UUID) (*int, error) {
 	query := "SELECT COUNT(t.*) from projects AS p JOIN tasks AS t ON p.id = t.project_id WHERE p.id = $1"
 	count := new(int)
 

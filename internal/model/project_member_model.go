@@ -14,3 +14,14 @@ type ProjectMemberCreateEditRequest struct {
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
+
+type ProjectMemberFilter struct {
+	UserID    *uuid.UUID
+	ProjectID *uuid.UUID
+}
+
+type ProjectMemberLocal struct {
+	UserID    uuid.UUID
+	ProjectID uuid.UUID
+	RoleID    int
+}

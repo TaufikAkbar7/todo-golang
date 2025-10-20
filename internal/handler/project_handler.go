@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,7 +32,8 @@ func (c *ProjectHandler) GetAll(ctx *fiber.Ctx) error {
 	newCtx, cancel := context.WithTimeout(ctx.UserContext(), 3*time.Second)
 	defer cancel()
 
-	response, err := c.Service.GetAll(newCtx)
+	userID := middleware.GetUser(ctx).ID
+	response, err := c.Service.GetAll(newCtx, userID)
 	if err != nil {
 		emptyData := []any{}
 		if err == context.DeadlineExceeded {
@@ -47,8 +49,10 @@ func (c *ProjectHandler) GetByID(ctx *fiber.Ctx) error {
 	defer cancel()
 
 	id := ctx.Params("id")
+	projectID, _ := uuid.Parse(id)
+	userID := middleware.GetUser(ctx).ID
 
-	project, err := c.Service.GetByID(newCtx, id)
+	project, err := c.Service.GetByID(newCtx, projectID, userID)
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			return ctx.Status(http.StatusGatewayTimeout).JSON(model.WebResponse[any]{Message: "operation timed out"})
@@ -97,6 +101,8 @@ func (c *ProjectHandler) Update(ctx *fiber.Ctx) error {
 	defer cancel()
 
 	id := ctx.Params("id")
+	projectID, _ := uuid.Parse(id)
+	userID := middleware.GetUser(ctx).ID
 	request := new(model.ProjectCreateEditRequest)
 	if err := ctx.BodyParser(request); err != nil {
 		c.Log.Errorf("Error validate request %v", err)
@@ -107,7 +113,7 @@ func (c *ProjectHandler) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(model.WebResponse[any]{Message: err.Error()})
 	}
 
-	if err := c.Service.Update(newCtx, request, id); err != nil {
+	if err := c.Service.Update(newCtx, request, projectID, userID); err != nil {
 		if err == context.DeadlineExceeded {
 			return ctx.Status(http.StatusGatewayTimeout).JSON(model.WebResponse[any]{Message: "operation timed out"})
 		}
@@ -124,8 +130,10 @@ func (c *ProjectHandler) Delete(ctx *fiber.Ctx) error {
 	defer cancel()
 
 	id := ctx.Params("id")
+	projectID, _ := uuid.Parse(id)
+	userID := middleware.GetUser(ctx).ID
 
-	if err := c.Service.Delete(newCtx, id); err != nil {
+	if err := c.Service.Delete(newCtx, projectID, userID); err != nil {
 		if err == context.DeadlineExceeded {
 			return ctx.Status(http.StatusGatewayTimeout).JSON(model.WebResponse[any]{Message: "operation timed out"})
 		}

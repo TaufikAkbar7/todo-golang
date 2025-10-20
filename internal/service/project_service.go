@@ -31,8 +31,8 @@ func NewProjectService(db *sqlx.DB, repo *repository.ProjectRepository, log *log
 	}
 }
 
-func (c *ProjectService) GetAll(ctx context.Context) (*[]model.ProjectReponseGet, error) {
-	projects, err := c.Repo.GetAll(ctx)
+func (c *ProjectService) GetAll(ctx context.Context, id uuid.UUID) (*[]model.ProjectReponseGet, error) {
+	projects, err := c.Repo.GetAll(ctx, id)
 	if err != nil {
 		c.Log.Errorf("Failed to get all data projects %v", err)
 		return nil, fiber.ErrInternalServerError
@@ -42,11 +42,11 @@ func (c *ProjectService) GetAll(ctx context.Context) (*[]model.ProjectReponseGet
 	return projects, nil
 }
 
-func (c *ProjectService) GetByID(ctx context.Context, id string) (*entity.Project, error) {
+func (c *ProjectService) GetByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*entity.Project, error) {
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
 
-	project, err := c.Repo.GetByID(ctx, tx, id)
+	project, err := c.Repo.GetByID(ctx, tx, id, userID)
 	if err != nil {
 		if err == sql.ErrNoRows || err == errors.New("not Found") {
 			c.Log.Info("Data not found")
@@ -60,21 +60,17 @@ func (c *ProjectService) GetByID(ctx context.Context, id string) (*entity.Projec
 	return project, nil
 }
 
-func (c *ProjectService) Create(ctx context.Context, req *model.ProjectCreateEditRequest, ownerID string) error {
+func (c *ProjectService) Create(ctx context.Context, req *model.ProjectCreateEditRequest, ownerID uuid.UUID) error {
 	newID, _ := uuid.NewV7()
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
 
-	parsedUUID, err := uuid.Parse(ownerID)
-	if err != nil {
-		c.Log.Errorf("Failed to parse UUID string: %v", err)
-	}
 	dateNow := helper.GetDateNow()
 	payload := &entity.Project{
 		ID:          newID,
 		Name:        req.Name,
 		Description: req.Description,
-		OwnerID:     parsedUUID,
+		OwnerID:     ownerID,
 		CreatedAt:   dateNow,
 		UpdatedAt:   dateNow,
 	}
@@ -88,7 +84,7 @@ func (c *ProjectService) Create(ctx context.Context, req *model.ProjectCreateEdi
 	payloadProjectMember := &entity.ProjectMember{
 		ID:        idProjectMember,
 		ProjectID: newID,
-		UserID:    parsedUUID,
+		UserID:    ownerID,
 		RoleID:    1, // owner
 	}
 	if err := c.RepoProjectMember.Create(ctx, tx, payloadProjectMember); err != nil {
@@ -105,11 +101,11 @@ func (c *ProjectService) Create(ctx context.Context, req *model.ProjectCreateEdi
 	return nil
 }
 
-func (c *ProjectService) Update(ctx context.Context, req *model.ProjectCreateEditRequest, id string) error {
+func (c *ProjectService) Update(ctx context.Context, req *model.ProjectCreateEditRequest, id uuid.UUID, userID uuid.UUID) error {
 	tx, _ := c.DB.BeginTxx(ctx, nil)
 	defer tx.Rollback()
 
-	project, err := c.Repo.GetByID(ctx, tx, id)
+	project, err := c.Repo.GetByID(ctx, tx, id, userID)
 	if err != nil {
 		if err == sql.ErrNoRows || err == errors.New("not Found") {
 			c.Log.Info("Data not found")
@@ -142,14 +138,14 @@ func (c *ProjectService) Update(ctx context.Context, req *model.ProjectCreateEdi
 	return nil
 }
 
-func (c *ProjectService) Delete(ctx context.Context, id string) error {
+func (c *ProjectService) Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		c.Log.Errorf("Failed start transaction db %v", err)
 		return err
 	}
 
-	if _, err := c.Repo.GetByID(ctx, tx, id); err != nil {
+	if _, err := c.Repo.GetByID(ctx, tx, id, userID); err != nil {
 		if err == sql.ErrNoRows || err == errors.New("not Found") {
 			c.Log.Info("Data not found")
 			return fiber.ErrNotFound

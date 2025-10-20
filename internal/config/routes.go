@@ -9,14 +9,16 @@ import (
 )
 
 type RouteConfig struct {
-	App                  *fiber.App
-	AuthMiddleware       fiber.Handler
-	ProjectMiddleware    fiber.Handler
-	UserHandler          *handler.UserHandler
-	ProjectHandler       *handler.ProjectHandler
-	TaskHandler          *handler.TaskHandler
-	ProjectMemberHandler *handler.ProjectMemberHandler
-	TagHandler           *handler.TagHandler
+	App                     *fiber.App
+	AuthMiddleware          fiber.Handler
+	ProjectMiddleware       fiber.Handler
+	TaskMiddleware          fiber.Handler
+	ProjectMemberMiddleware fiber.Handler
+	UserHandler             *handler.UserHandler
+	ProjectHandler          *handler.ProjectHandler
+	TaskHandler             *handler.TaskHandler
+	ProjectMemberHandler    *handler.ProjectMemberHandler
+	TagHandler              *handler.TagHandler
 }
 
 func (c *RouteConfig) Setup() {
@@ -33,37 +35,38 @@ func (c *RouteConfig) Setup() {
 }
 
 func (c *RouteConfig) PublicRoutes() {
-	c.App.Post("/api/users/register", c.UserHandler.Register)
-	c.App.Post("/api/users/login", c.UserHandler.Login)
+	c.App.Post("/api/user/register", c.UserHandler.Register)
+	c.App.Post("/api/user/login", c.UserHandler.Login)
 }
 
 func (c *RouteConfig) PrivateRoutes() {
 	c.App.Use(c.AuthMiddleware)
 	api := c.App.Group("/api")
 
-	projects := api.Group("/projects")
-	projects.Get("/", c.ProjectHandler.GetAll)
-	projects.Get(":id", c.ProjectMiddleware, c.ProjectHandler.GetByID)
-	projects.Post("/", c.ProjectHandler.Create)
-	projects.Patch(":id", c.ProjectMiddleware, c.ProjectHandler.Update)
-	projects.Delete(":id", c.ProjectMiddleware, c.ProjectHandler.Delete)
-	projects.Post(":id/invite", c.ProjectMiddleware, c.ProjectMemberHandler.InviteUser)
-	projects.Delete(":id/delete/:userId", c.ProjectMiddleware, c.ProjectMemberHandler.Delete)
+	project := api.Group("/project")
+	newProject := api.Group("/project/:projectId")
+	project.Get("/", c.ProjectHandler.GetAll)
+	project.Get(":id", c.ProjectHandler.GetByID)
+	project.Post("/", c.ProjectHandler.Create)
+	project.Patch(":id", c.ProjectMiddleware, c.ProjectHandler.Update)
+	project.Delete(":id", c.ProjectMiddleware, c.ProjectHandler.Delete)
+	project.Post(":id/invite", c.ProjectMemberMiddleware, c.ProjectMemberHandler.InviteUser)
+	project.Delete(":id/delete/:userId", c.ProjectMemberMiddleware, c.ProjectMemberHandler.Delete)
 
-	tasks := api.Group("/tasks")
-	tasks.Get("/", c.TaskHandler.GetAll)
-	tasks.Get(":id", c.TaskHandler.GetByID)
-	tasks.Post("/", c.TaskHandler.Create)
-	tasks.Patch(":id", c.TaskHandler.Update)
-	tasks.Delete(":id", c.TaskHandler.Delete)
-	tasks.Post(":id/assign-tag", c.TaskHandler.AssignTag)
-	tasks.Delete(":id/unassign-tag/:taskTagId", c.TaskHandler.UnassignTag)
+	task := newProject.Group("/task")
+	task.Get("/", c.TaskMiddleware, c.TaskHandler.GetAll)
+	task.Get(":id", c.TaskMiddleware, c.TaskHandler.GetByID)
+	task.Post("/", c.TaskMiddleware, c.TaskHandler.Create)
+	task.Patch(":id", c.TaskMiddleware, c.TaskHandler.Update)
+	task.Delete(":id", c.TaskMiddleware, c.TaskHandler.Delete)
+	task.Post(":id/assign-tag", c.TaskHandler.AssignTag)
+	task.Delete(":id/unassign-tag/:taskTagId", c.TaskHandler.UnassignTag)
 
-	tags := api.Group("/tags")
-	tags.Get("/", c.TagHandler.GetAll)
-	tags.Get(":id", c.TagHandler.GetByID)
-	tags.Post("/", c.TagHandler.Create)
-	tags.Patch(":id", c.TagHandler.Update)
-	tags.Delete(":id", c.TagHandler.Delete)
+	tag := newProject.Group("/tag")
+	tag.Get("/", c.TaskMiddleware, c.TagHandler.GetAll)
+	tag.Get(":id", c.TaskMiddleware, c.TagHandler.GetByID)
+	tag.Post("/", c.TaskMiddleware, c.TagHandler.Create)
+	tag.Patch(":id", c.TaskMiddleware, c.TagHandler.Update)
+	tag.Delete(":id", c.TaskMiddleware, c.TagHandler.Delete)
 
 }

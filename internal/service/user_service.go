@@ -187,7 +187,7 @@ func (c *UserService) Verify(ctx context.Context, req *model.VerifyUserRequest) 
 			return nil, fiber.ErrUnauthorized
 		}
 		auth := new(model.Auth)
-		auth.ID = user.ID.String()
+		auth.ID = user.ID
 		auth.Username = user.Username
 		return auth, nil
 	}

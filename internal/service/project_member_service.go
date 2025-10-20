@@ -69,14 +69,16 @@ func (c *ProjectMemberService) Create(ctx context.Context, req *model.ProjectMem
 	return nil
 }
 
-func (c *ProjectMemberService) Delete(ctx context.Context, id string, userId string) error {
+func (c *ProjectMemberService) Delete(ctx context.Context, id uuid.UUID, userId uuid.UUID) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
+	filters := new(model.ProjectMemberFilter)
 	if err != nil {
 		c.Log.Errorf("Failed start transaction db %v", err)
 		return err
 	}
 
-	if _, err := c.Repo.GetByID(ctx, tx, userId); err != nil {
+	filters.UserID = &userId
+	if _, err := c.Repo.GetByID(ctx, tx, *filters); err != nil {
 		if err == sql.ErrNoRows || err == errors.New("not Found") {
 			c.Log.Info("Data not found")
 			return fiber.ErrNotFound
@@ -97,4 +99,30 @@ func (c *ProjectMemberService) Delete(ctx context.Context, id string, userId str
 
 	c.Log.Info("Success deleted member")
 	return nil
+}
+
+func (c *ProjectMemberService) GetByID(ctx context.Context, userId uuid.UUID, projectId uuid.UUID) (*entity.ProjectMember, error) {
+	tx, _ := c.DB.BeginTxx(ctx, nil)
+	defer tx.Rollback()
+	filters := new(model.ProjectMemberFilter)
+
+	filters.UserID = &userId
+	filters.ProjectID = &projectId
+	member, err := c.Repo.GetByID(ctx, tx, *filters)
+	if err != nil {
+		if err == sql.ErrNoRows || err == errors.New("not Found") {
+			c.Log.Info("Data not found")
+			return nil, fiber.ErrNotFound
+		}
+		c.Log.Errorf("Failed to get data project member %v", err)
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Log.Errorf("Failed commit transaction : %v", err)
+		return nil, fiber.ErrInternalServerError
+	}
+
+	c.Log.Info("Success get member")
+	return member, nil
 }

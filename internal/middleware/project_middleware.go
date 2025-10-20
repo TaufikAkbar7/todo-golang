@@ -12,14 +12,16 @@ import (
 func NewProject(s *service.ProjectService) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		id := ctx.Params("id")
-		project, err := s.GetByID(ctx.UserContext(), id)
+		projectID, _ := uuid.Parse(id)
+		userID := GetUser(ctx).ID
+		project, err := s.GetByID(ctx.UserContext(), projectID, userID)
+
 		if err != nil {
 			return ctx.Status(http.StatusNotFound).JSON(model.WebResponse[any]{Message: "Data not found"})
 		}
 
 		getUserId := GetUser(ctx).ID
-		parseUUID, _ := uuid.Parse(getUserId)
-		if project != nil && project.OwnerID == parseUUID {
+		if project != nil && project.OwnerID == getUserId {
 			return ctx.Next()
 		}
 		return ctx.Status(http.StatusForbidden).JSON(model.WebResponse[any]{Message: "You are not authorized to manage this project"})
